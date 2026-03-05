@@ -5,31 +5,32 @@
 aws-infra/
 ├── main.tf              # Root module configuration
 ├── variables.tf         # Variable definitions
-├── terraform.tfvars     # Centralized parameters (VPC, subnet, etc.)
+├── terraform.tfvars     # Centralized parameters
 ├── outputs.tf           # Root outputs
+├── apply.bat/sh         # Terraform apply wrapper
+├── destroy.bat/sh       # Terraform destroy wrapper
 ├── check_bucket.bat     # S3 bucket pre-check script
+├── doc/                 # Documentation
+│   ├── POC_SETUP.md
+│   ├── S3_BUCKET_GUIDE.md
+│   ├── S3_SECURITY_VERIFICATION.md
+│   ├── SSM_ACCESS_VERIFICATION.md
+│   └── DEPENDENCY_VERIFICATION.md
 ├── scripts/             # Helper scripts
-│   ├── connect-ai-host.bat  # Windows SSM connection script
-│   └── connect-ai-host.sh   # Linux/macOS SSM connection script
+│   ├── connect-ai-host.bat/sh   # SSM connection scripts
+│   └── safe-destroy.bat/sh      # Safe destroy with checks
 └── modules/
+    ├── vpc/             # VPC module
     ├── ec2/             # EC2 module
-    │   ├── main.tf
-    │   ├── variables.tf
-    │   └── outputs.tf
+    ├── rds/             # RDS PostgreSQL module
     ├── s3/              # S3 module
-    │   ├── main.tf
-    │   ├── variables.tf
-    │   └── outputs.tf
     └── eip/             # Elastic IP module
-        ├── main.tf
-        ├── variables.tf
-        └── outputs.tf
 ```
 
 ## Prerequisites
 - Terraform >= 1.0
 - AWS CLI configured with profile `ai-steven`
-- Valid VPC ID and Subnet ID
+- Session Manager plugin (for SSM access)
 
 ## S3 Bucket Behavior
 
@@ -51,36 +52,31 @@ check_bucket.bat ai-foundry-artifacts-apse4 ai-steven
   1. Remove the `prevent_destroy` lifecycle rule
   2. Run `terraform destroy` again
 
-## Setup
-1. Update `terraform.tfvars` with your actual VPC ID and Subnet ID
-2. (Optional) Run bucket check: `check_bucket.bat ai-foundry-artifacts-apse4 ai-steven`
-3. Initialize Terraform:
+## Quick Start
+1. Update `terraform.tfvars` with your parameters
+2. Run apply script:
    ```bash
-   terraform init
+   apply.bat      # Windows
+   ./apply.sh     # Linux/macOS
    ```
-4. If bucket exists in your account, import it:
+3. Connect to instance:
    ```bash
-   terraform import module.s3.aws_s3_bucket.main ai-foundry-artifacts-apse4
-   ```
-5. Review the plan:
-   ```bash
-   terraform plan
-   ```
-6. Apply the configuration:
-   ```bash
-   terraform apply
+   scripts\connect-ai-host.bat  # Windows
+   ./scripts/connect-ai-host.sh # Linux/macOS
    ```
 
 ## Current Resources
+- **VPC**: Custom VPC with public/private subnets across 2 AZs
 - **EC2 Instance**: t3.micro with 30GB GP3 storage, Amazon Linux 2023
   - Docker pre-installed via user_data
   - AWS CLI v2, tree, htop, git installed
   - IAM role with ECR, S3, and SSM access
-- **Security Group**: HTTP (port 80) ingress + full egress
+- **RDS PostgreSQL**: db.t3.micro with 20GB storage
+  - Multi-AZ deployment in private subnets
+  - Automated backups (7-day retention)
+- **Security Groups**: Configured for EC2 (HTTP) and RDS (PostgreSQL)
 - **S3 Bucket**: Private bucket with versioning and encryption
-  - Contains docker-server-init.sh in initialfiles/ folder
-- **IAM Role**: EC2 instance role with S3, ECR, and SSM access
-- **Elastic IP**: Static public IP for external access
+- **Elastic IP**: Static public IP for EC2
 
 ## POC Deployment Support
 
@@ -117,5 +113,32 @@ docker --version
 docker ps
 ```
 
-## Future Modules
-- RDS/Aurora PostgreSQL (to be added)
+## Git Workflow
+
+### Repository Setup
+This repository excludes Terraform-generated files:
+- `terraform.tfstate*` (state files)
+- `.terraform/` (providers/modules cache)
+- `.terraform.lock.hcl` (lock file)
+- Editor temp files (*.swp)
+
+### Initial Push
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin <your-repo-url>
+git push -u origin main
+```
+
+### If Large Files Were Committed
+If you accidentally committed Terraform providers:
+```bash
+# Remove from Git history
+git filter-branch --force --index-filter \
+  "git rm -rf --cached --ignore-unmatch .terraform/ terraform.tfstate*" \
+  --prune-empty --tag-name-filter cat -- --all
+
+# Force push cleaned history
+git push origin main --force
+```
