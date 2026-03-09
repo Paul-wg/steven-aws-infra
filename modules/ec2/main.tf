@@ -71,6 +71,23 @@ resource "aws_instance" "main" {
               else
                 echo "ERROR: Failed to download init script from S3 after 3 attempts" > /var/log/docker-server-init.log
               fi
+
+              # Generate .env file — NO passwords, only Secrets Manager references
+              echo "Generating .env.${var.environment} (no secrets on disk)..."
+              ENV_FILE="/home/ec2-user/.env.${var.environment}"
+
+              cat > "$ENV_FILE" << ENVEOF
+              DB_SECRET_NAME=${var.db_secret_name}
+              DB_SECRET_REGION=${var.aws_region}
+              DB_CLUSTER_ENDPOINT=${var.db_cluster_endpoint}
+              APP_ENV=${var.environment}
+              SECRET_KEY=$(openssl rand -hex 32)
+              CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+              ENVEOF
+
+              chown ec2-user:ec2-user "$ENV_FILE"
+              chmod 600 "$ENV_FILE"
+              echo ".env.${var.environment} created successfully (secrets resolved at app startup via IAM role)"
               EOF
 
   root_block_device {

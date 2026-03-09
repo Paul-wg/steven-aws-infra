@@ -59,10 +59,14 @@ module "ec2" {
   iam_instance_profile = module.s3.ec2_instance_profile_name
   s3_bucket_name   = var.s3_bucket_name
   s3_bucket_id     = module.s3.bucket_name
-  
+  aws_region          = var.aws_region
+  db_cluster_endpoint = module.rds.cluster_endpoint
+  db_secret_name      = "nebulas-${var.environment}-aurora-password"
+
   depends_on = [
     module.s3.bucket_ready,
-    module.s3.init_script_uploaded
+    module.s3.init_script_uploaded,
+    module.rds
   ]
 }
 

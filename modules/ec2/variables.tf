@@ -42,3 +42,18 @@ variable "s3_bucket_id" {
   description = "S3 bucket ID to ensure bucket exists before EC2 creation"
   type        = string
 }
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "db_cluster_endpoint" {
+  description = "Aurora cluster endpoint for .env file generation"
+  type        = string
+}
+
+variable "db_secret_name" {
+  description = "Secrets Manager secret name for DB credentials"
+  type        = string
+}
