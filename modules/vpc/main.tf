@@ -4,6 +4,7 @@ data "aws_vpc" "main" {
 
 # Private subnets are pre-existing and permanently managed outside Terraform.
 # Never created or destroyed by this module — looked up by tag only.
+# Shared across environments (dev + prod use same subnets).
 data "aws_subnets" "db_private" {
   filter {
     name   = "vpc-id"
@@ -11,12 +12,14 @@ data "aws_subnets" "db_private" {
   }
   filter {
     name   = "tag:Name"
-    values = ["${var.project_name}-${var.environment}-db_subnet_*"]
+    values = ["nebulas-db-subnet-*"]
   }
 }
 
+# --- Per-environment resources ---
+
 resource "aws_security_group" "db" {
-  name        = "${var.project_name}-${var.environment}-db-sg"
+  name        = "nebulas-${var.environment}-db-sg"
   description = "Security group for PostgreSQL database"
   vpc_id      = var.vpc_id
 
@@ -37,60 +40,19 @@ resource "aws_security_group" "db" {
   }
 
   tags = {
-    Name        = "${var.project_name}-${var.environment}-db-sg"
+    Name        = "nebulas-${var.environment}-db-sg"
     Environment = var.environment
     Project     = var.project_name
   }
 }
 
-resource "aws_vpc_endpoint" "ssm" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.ssm"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = data.aws_subnets.db_private.ids
-  security_group_ids  = [aws_security_group.ssm_endpoint.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-ssm-endpoint"
-    Environment = var.environment
-    Project     = var.project_name
-  }
-}
-
-resource "aws_vpc_endpoint" "ssmmessages" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = data.aws_subnets.db_private.ids
-  security_group_ids  = [aws_security_group.ssm_endpoint.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-ssmmessages-endpoint"
-    Environment = var.environment
-    Project     = var.project_name
-  }
-}
-
-resource "aws_vpc_endpoint" "ec2messages" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = data.aws_subnets.db_private.ids
-  security_group_ids  = [aws_security_group.ssm_endpoint.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-ec2messages-endpoint"
-    Environment = var.environment
-    Project     = var.project_name
-  }
-}
+# --- Shared VPC resources (created once, used by all environments) ---
+# Set create_vpc_endpoints = true for the first env, false for subsequent envs.
 
 resource "aws_security_group" "ssm_endpoint" {
-  name        = "${var.project_name}-${var.environment}-ssm-endpoint-sg"
-  description = "Security group for SSM VPC endpoints"
+  count       = var.create_vpc_endpoints ? 1 : 0
+  name        = "ssm-endpoint-sg"
+  description = "Security group for SSM VPC endpoints (shared across envs)"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -109,8 +71,52 @@ resource "aws_security_group" "ssm_endpoint" {
   }
 
   tags = {
-    Name        = "${var.project_name}-${var.environment}-ssm-endpoint-sg"
-    Environment = var.environment
-    Project     = var.project_name
+    Name    = "ssm-endpoint-sg"
+    Project = var.project_name
+  }
+}
+
+resource "aws_vpc_endpoint" "ssm" {
+  count               = var.create_vpc_endpoints ? 1 : 0
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ssm"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = data.aws_subnets.db_private.ids
+  security_group_ids  = [aws_security_group.ssm_endpoint[0].id]
+  private_dns_enabled = true
+
+  tags = {
+    Name    = "ssm-endpoint"
+    Project = var.project_name
+  }
+}
+
+resource "aws_vpc_endpoint" "ssmmessages" {
+  count               = var.create_vpc_endpoints ? 1 : 0
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = data.aws_subnets.db_private.ids
+  security_group_ids  = [aws_security_group.ssm_endpoint[0].id]
+  private_dns_enabled = true
+
+  tags = {
+    Name    = "ssmmessages-endpoint"
+    Project = var.project_name
+  }
+}
+
+resource "aws_vpc_endpoint" "ec2messages" {
+  count               = var.create_vpc_endpoints ? 1 : 0
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = data.aws_subnets.db_private.ids
+  security_group_ids  = [aws_security_group.ssm_endpoint[0].id]
+  private_dns_enabled = true
+
+  tags = {
+    Name    = "ec2messages-endpoint"
+    Project = var.project_name
   }
 }

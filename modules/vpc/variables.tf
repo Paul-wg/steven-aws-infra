@@ -17,3 +17,9 @@ variable "project_name" {
   description = "Project name"
   type        = string
 }
+
+variable "create_vpc_endpoints" {
+  description = "Create VPC endpoints for SSM (set true for first env, false for subsequent)"
+  type        = bool
+  default     = true
+}

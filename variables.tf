@@ -59,3 +59,9 @@ variable "aurora_instance_class" {
   type        = string
   default     = "db.t4g.medium"
 }
+
+variable "create_vpc_endpoints" {
+  description = "Create VPC endpoints for SSM (set true for first env, false for subsequent)"
+  type        = bool
+  default     = true
+}

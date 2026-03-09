@@ -1,8 +1,20 @@
 #!/bin/bash
-# Safe destroy script - removes S3 resources from state before destroying
+# Usage: ./safe-destroy.sh dev   or   ./safe-destroy.sh prod
+
+ENV="${1:-dev}"
+TFVARS="../envs/${ENV}.tfvars"
+
+if [ ! -f "$TFVARS" ]; then
+  TFVARS="envs/${ENV}.tfvars"
+fi
+
+if [ ! -f "$TFVARS" ]; then
+  echo "ERROR: envs/${ENV}.tfvars not found. Usage: ./safe-destroy.sh dev|prod"
+  exit 1
+fi
 
 echo "=========================================="
-echo "Safe Terraform Destroy"
+echo "Safe Terraform Destroy — Environment: $ENV"
 echo "=========================================="
 echo "This will:"
 echo "1. Remove S3 bucket from Terraform state"
@@ -18,6 +30,9 @@ if [ "$confirm" != "yes" ]; then
     exit 0
 fi
 
+# Select workspace
+terraform workspace select "$ENV" 2>/dev/null || { echo "ERROR: Workspace '$ENV' not found"; exit 1; }
+
 echo
 echo "Step 1: Removing S3 resources from Terraform state..."
 terraform state rm module.s3.aws_s3_bucket.main 2>/dev/null || echo "  - S3 bucket already removed or doesn't exist"
@@ -29,7 +44,7 @@ terraform state rm module.s3.null_resource.destroy_warning 2>/dev/null || echo "
 
 echo
 echo "Step 2: Destroying remaining resources..."
-terraform destroy
+terraform destroy -var-file="$TFVARS"
 
 echo
 echo "=========================================="

@@ -29,11 +29,12 @@ module "s3" {
 }
 
 module "vpc" {
-  source       = "./modules/vpc"
-  vpc_id       = var.vpc_id
-  aws_region   = var.aws_region
-  environment  = var.environment
-  project_name = var.project_name
+  source               = "./modules/vpc"
+  vpc_id               = var.vpc_id
+  aws_region           = var.aws_region
+  environment          = var.environment
+  project_name         = var.project_name
+  create_vpc_endpoints = var.create_vpc_endpoints
 }
 
 module "rds" {

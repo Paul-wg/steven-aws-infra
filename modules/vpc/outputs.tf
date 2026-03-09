@@ -9,10 +9,10 @@ output "db_security_group_id" {
 }
 
 output "ssm_endpoint_ids" {
-  description = "SSM VPC endpoint IDs"
-  value = {
-    ssm         = aws_vpc_endpoint.ssm.id
-    ssmmessages = aws_vpc_endpoint.ssmmessages.id
-    ec2messages = aws_vpc_endpoint.ec2messages.id
-  }
+  description = "SSM VPC endpoint IDs (empty map when create_vpc_endpoints = false)"
+  value = var.create_vpc_endpoints ? {
+    ssm         = aws_vpc_endpoint.ssm[0].id
+    ssmmessages = aws_vpc_endpoint.ssmmessages[0].id
+    ec2messages = aws_vpc_endpoint.ec2messages[0].id
+  } : {}
 }

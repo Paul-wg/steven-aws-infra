@@ -1,9 +1,9 @@
 #!/bin/bash
-# Connect to EC2 via SSM using tag name=Nebulas-host
+# Usage: ./connect-ai-host.sh dev   or   ./connect-ai-host.sh prod
 
 AWS_PROFILE="ai-steven"
 AWS_REGION="ap-southeast-4"
-ENVIRONMENT="dev"
+ENVIRONMENT="${1:-dev}"
 TAG_VALUE="nebulas-${ENVIRONMENT}"
 
 echo "=========================================="
