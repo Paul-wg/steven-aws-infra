@@ -1,11 +1,6 @@
 output "db_subnet_ids" {
-  description = "List of private subnet IDs for database"
-  value       = aws_subnet.db_private[*].id
-}
-
-output "db_subnet_cidrs" {
-  description = "List of private subnet CIDR blocks"
-  value       = aws_subnet.db_private[*].cidr_block
+  description = "List of private subnet IDs for database (pre-existing, not managed by Terraform)"
+  value       = data.aws_subnets.db_private.ids
 }
 
 output "db_security_group_id" {

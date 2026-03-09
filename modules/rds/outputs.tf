@@ -27,3 +27,14 @@ output "secret_arn" {
   description = "Secrets Manager secret ARN"
   value       = aws_secretsmanager_secret.db_password.arn
 }
+
+output "app_username" {
+  description = "Application database username"
+  value       = "nebulas"
+}
+
+output "app_password" {
+  description = "Application database password"
+  value       = random_password.app_user.result
+  sensitive   = true
+}

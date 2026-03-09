@@ -69,9 +69,6 @@ module "ec2" {
 module "eip" {
   count        = var.allocate_eip ? 1 : 0
   source       = "./modules/eip"
-  instance_id  = module.ec2.instance_id
   environment  = var.environment
   project_name = var.project_name
-  
-  depends_on = [module.ec2]
 }

@@ -114,7 +114,7 @@ resource "aws_iam_role_policy" "ec2_s3_access" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = "arn:aws:secretsmanager:*:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}-${var.environment}-aurora-master-password-*"
+        Resource = "arn:aws:secretsmanager:*:${data.aws_caller_identity.current.account_id}:secret:nebulas-${var.environment}-aurora-password-*"
       }
     ]
   })

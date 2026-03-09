@@ -2,21 +2,16 @@ data "aws_vpc" "main" {
   id = var.vpc_id
 }
 
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
-resource "aws_subnet" "db_private" {
-  count             = 3
-  vpc_id            = var.vpc_id
-  cidr_block        = cidrsubnet(data.aws_vpc.main.cidr_block, 4, count.index + 10)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-db_subnet_${substr(data.aws_availability_zones.available.names[count.index], -2, 2)}"
-    Environment = var.environment
-    Project     = var.project_name
-    Type        = "private"
+# Private subnets are pre-existing and permanently managed outside Terraform.
+# Never created or destroyed by this module — looked up by tag only.
+data "aws_subnets" "db_private" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+  filter {
+    name   = "tag:Name"
+    values = ["${var.project_name}-${var.environment}-db_subnet_*"]
   }
 }
 
@@ -52,7 +47,7 @@ resource "aws_vpc_endpoint" "ssm" {
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.ssm"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.db_private[*].id
+  subnet_ids          = data.aws_subnets.db_private.ids
   security_group_ids  = [aws_security_group.ssm_endpoint.id]
   private_dns_enabled = true
 
@@ -67,7 +62,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.db_private[*].id
+  subnet_ids          = data.aws_subnets.db_private.ids
   security_group_ids  = [aws_security_group.ssm_endpoint.id]
   private_dns_enabled = true
 
@@ -82,7 +77,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.db_private[*].id
+  subnet_ids          = data.aws_subnets.db_private.ids
   security_group_ids  = [aws_security_group.ssm_endpoint.id]
   private_dns_enabled = true
 

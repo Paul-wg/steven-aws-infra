@@ -1,0 +1,15 @@
+# Force LF line endings for all text files (prevents Windows CRLF issues on Linux servers)
+* text=auto eol=lf
+
+# Ensure shell scripts are always LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Terraform files
+*.tf text eol=lf
+*.tfvars text eol=lf
+
+# Keep binary files as-is
+*.png binary
+*.jpg binary
+*.zip binary

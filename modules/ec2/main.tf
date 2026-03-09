@@ -2,9 +2,16 @@ data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
 
+  # "al2023-ami-2*" matches full AL2023 only — excludes "al2023-ami-minimal-*"
+  # Full AL2023 has SSM agent pre-installed; minimal does not
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = ["al2023-ami-2*-arm64"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
   }
 
   filter {
@@ -49,15 +56,21 @@ resource "aws_instance" "main" {
 
   user_data = <<-EOF
               #!/bin/bash
-              set -e
-              
               # Verify S3 bucket exists: ${var.s3_bucket_id}
-              # Download init script from S3
-              aws s3 cp s3://${var.s3_bucket_name}/initialfiles/docker-server-init.sh /tmp/docker-server-init.sh
-              chmod +x /tmp/docker-server-init.sh
-              
-              # Run init script
-              /tmp/docker-server-init.sh > /var/log/docker-server-init.log 2>&1
+              # Download init script from S3 (retry up to 3 times for IAM credential propagation)
+              for i in 1 2 3; do
+                aws s3 cp s3://${var.s3_bucket_name}/initialfiles/docker-server-init.sh /tmp/docker-server-init.sh && break
+                echo "S3 download attempt $i failed, retrying in 10s..."
+                sleep 10
+              done
+
+              if [ -f /tmp/docker-server-init.sh ]; then
+                sed -i 's/\r$//' /tmp/docker-server-init.sh
+                chmod +x /tmp/docker-server-init.sh
+                /tmp/docker-server-init.sh > /var/log/docker-server-init.log 2>&1
+              else
+                echo "ERROR: Failed to download init script from S3 after 3 attempts" > /var/log/docker-server-init.log
+              fi
               EOF
 
   root_block_device {
@@ -67,8 +80,7 @@ resource "aws_instance" "main" {
   }
 
   tags = {
-    Name        = "${var.project_name}-${var.environment}-ec2"
-    name        = "Nebulas-host"
+    Name        = "nebulas-${var.environment}"
     Environment = var.environment
     Project     = var.project_name
   }

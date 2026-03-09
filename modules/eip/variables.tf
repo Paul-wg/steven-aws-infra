@@ -1,8 +1,3 @@
-variable "instance_id" {
-  description = "EC2 instance ID"
-  type        = string
-}
-
 variable "environment" {
   description = "Environment name"
   type        = string

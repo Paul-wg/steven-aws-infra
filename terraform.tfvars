@@ -7,7 +7,7 @@ environment    = "dev"
 project_name   = "ai-steven"
 
 # EC2 Configuration
-instance_type  = "t3.micro"
+instance_type  = "t4g.micro"
 root_volume_size = 30
 
 # S3 Configuration
